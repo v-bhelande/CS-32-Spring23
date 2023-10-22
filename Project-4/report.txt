@@ -1,0 +1,122 @@
+CS 32 Project 4 Report
+
+1) Description of Algorithms and Data Structures
+
+The dictionary is implemented as a hash table. There are 3 structures used:
+
+a) Vector: The dictionary is initialized as a vector of pointers to a type of linked list I called buckets. The size of the vector is a prime number below the maximum buckets argument in the constructor. Choosing a prime number reduces the number of collisions and increases the speed of insert and lookup.
+
+Two types of linked lists are implemented here which I refer to as buckets and anagrams. The distinction between the two is specified below:
+
+b) Buckets: This structure contains a string, a pointer to another bucket, and a pointer to an anagram (described below).
+
+c) Anagrams: This structure contains a string and a pointer to another anagram.
+
+The dictionary data structure can be visualized below:
+
+      Vector (Hash Table)	   Bucket		     Bucket
+	____________		_____________		 ______________
+	|          |		|    bcd    |		 |     ccc    |
+	|__________|		|___________|		 |____________|
+	|          |		|           |		 |            |
+	| Pointer--|------------|-->     ---|------------|-->      ---|-------> NULL
+	|__________|		|___________|		 |____________|
+	|          |		|           |		 |            |
+	|          |		|_____|_____|		 |______|_____|
+	|__________|		      |				|
+	|          |		      |				|
+	|          |		      |				|
+	|__________|		      V				V
+	|          |
+	|__________|		   Anagram		     Anagram
+				____________		   ____________		
+				|          |		   |          |	   
+				|    bdc   |		   |    ccc   |	    
+				|__________|		   |__________|		      
+				|          |		   |          |
+				|_____|____|		   |_____|____|  
+				      |				 |
+				      |				 |
+				      V				 V
+
+				   Anagram		        NULL
+				____________				
+				|          |		   
+				|    bcd   |		    
+				|__________|		      
+				|          |
+				|_____|____|		  
+				      |
+				      |
+				      V
+				     NULL
+
+The index of the hash table is defined as index = hash/Number of buckets (Prime number which is less than or equal to argument from constructor)
+
+The reasoning for two different types of linked list is as follows. When inserting items into the dictionary, the hash function is called and produces a hash for the string. Suppose the string is "ccc" This will have an index of 9 and be inserted at the beginning of the linked list the which the pointer in the 9th element of the vector points to. Inserting the string "bdc" will produce a similar result with a new bucket being formed in the linked list which is just after the pointer from the vector hash table. Now if we insert "bcd", it will be inserted before "bcd" and the linked list would look like: vec[9]->bcd->bdc->ccc. If we were to look up the anagrams of ccc in the dictionary, we would find the vector element corresponding to the index and iterate through that linked list. But we would needlessly iterate through bdc and bcd which are already of anagrams of each other before we reach ccc.
+
+To reduce this needless checking, we introduce the Anagram structure in our insert function. If we are inserting a new word and there are no Bucket structures the vector at the index value is pointing to, we insert a new Bucket with that word and a corresponding Anagram with that word. Consider our initial scenario again. Suppose ccc is inserted, it will have a new Bucket and a corresponding Anagram structure since it is the only string with an index of 9. Now, insert bdc. It has the same index as ccc but is not an anagram of ccc. Thus, it is inserted into the linked list with a Bucket structure and it's corresponding Anagram structure.
+Now, insert bcd. This has an index of 9 and we see it is an anagram of bdc. This will now get inserted into the Anagram linked list of bdc. The Anagram linked list will look as follows: Bucket(bdc) -> bcd -> bdc.
+
+This makes lookup significantly faster since we do not have to generate every possible permutation of the word we are looking up and iterate through the linked list that many times till we find a match. Instead, we find the pointer in the vector hash table corresponding to the index. Then we follow the linked list of buckets. If the word we are looking up is an anagram, we just follows the corresponding Anagram linked list and call the callback function for all those nodes, reducing needless searching of other nodes in the Bucket linked list.
+
+2) Pseudocode:
+
+a) Hash Function:
+
+unsigned int DictionaryImpl::hash_function(string str) const
+	iterate through characters in string
+		sum ASCII values - 96
+	return sum/number of Buckets (Prime number which is less than or equal to argument from constructor)
+
+b) Anagram Checker:
+
+bool isAnagram(const string word, const string otherWord)
+	if words are not of equal length, return false
+	iterate through word
+		count number of times each letter appears
+	iterate through otherWord
+		count number of times each letter appears
+	return true if count of each letter is equal, return false otherwise
+
+c) Insert Function:
+
+void DictionaryImpl::insert(string word)
+	remove non-letters
+	if word is not empty
+		call hash function
+		if no buckets at index of hash table
+			Create a bucket and anagram structure with word
+		else
+			iterate through linked list of Bucket structured
+				if word is an anagram of word at Bucket
+					insert word into Anagram linked list at Bucket
+					return;
+			Create a bucket at beginning of linked list of Bucket structures
+
+d) Lookup Function:
+
+void DictionaryImpl::lookup(string letters, void callback(string)) const
+	return if no callback function
+	return if non-letter word is empty
+
+	call hash function to find index
+	iterate through linked list of Bucket structures at index of hash table
+		if word is an anagram of word at Bucket
+		iterate through Anagram linked list at Bucket
+			call callback function
+			return;
+
+e) Dictionary Destructor:
+
+DictionaryImpl::~DictionaryImpl()
+	iterate through vector of hash table
+		iterate through linked list of Bucket structures
+			iterate through linked list of Anagram structures
+				delete Anagram structures
+		iterate through linked list of Bucket structures
+			delete Bucket structures
+
+3) Notes about any known bugs, serious inefficiencies, or notable problems:
+
+Some inefficiencies are posed by the lookup function. To determine whether the word being looked up is an anagram of the word in the Bucket structure, all occurrences of each letter are compared which has time complexity O(N). Iterating through the linked list of Bucket structures also has a time complexity O(N). Additionally, the hash function could be optimized to ensure staggering of values and ensure a more random distribution of words in each bucket. This would further reduce the number of collisions and allow for faster checkin in each linked list with Bucket structures as there would be fewer nodes to look at.
